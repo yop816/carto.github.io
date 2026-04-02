@@ -1,1 +1,709 @@
 # .github.io
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte Interactive - La Mouche</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { --primary-color: #000; --accent-color: #ff0080; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Montserrat', sans-serif; overflow: hidden; background: #fff; }
+        #main-container { display: flex; width: 100vw; height: calc(100vh - 60px); }
+        
+input, textarea, select { 
+    width: 100%; 
+    margin-bottom: 12px; 
+    padding: 12px;        
+    box-sizing: border-box; 
+    border: 2px solid #000; 
+    font-family: inherit;
+    font-size: 0.9rem;
+    display: block;      
+}
+
+.btn-full {
+    padding: 15px;
+    font-size: 1rem;
+}
+
+        #side-panel { width: 0; height: 100%; background: #fff; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; border-right: 4px solid #000; z-index: 1005; overflow-y: auto; }
+        #side-panel.active { width: 35%; }
+        #side-panel.half-page { width: 50%; }
+        #map { flex-grow: 1; height: 100%; z-index: 1; }
+
+        #btn-global-list { position: absolute; top: 15px; left: 15px; z-index: 2000; display: flex; gap: 5px; }
+        .tab-btn { background: #000; color: #fff; border: 3px solid #000; padding: 10px 15px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; box-shadow: 6px 6px 0px rgba(0,0,0,0.1); }
+
+       
+		#search-container {position: absolute;top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 320px;transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Animation fluide */} 
+		.search-input { width: 100%; padding: 10px 15px; border: 3px solid #000; font-weight: 700; box-shadow: 6px 6px 0px rgba(0,0,0,0.1); font-family: inherit; font-size: 0.9rem; outline: none; }
+		body #main-container:has(#side-panel.half-page) ~ #search-container,
+		body:has(#side-panel.half-page) #search-container {
+		left: 75% !important;
+		transform: translateX(-50%); /* On garde le centrage mais sur le point 75% */}
+		#search-results { background: white; border: 3px solid #000; border-top: none; display: none; max-height: 200px; overflow-y: auto; }
+        .search-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+
+        #timeline { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 2005; box-sizing: border-box; }
+        .timeline-right { display: flex; gap: 10px; align-items: center; }
+        .filter-left { display: flex; gap: 10px; align-items: center; }
+        .year-btn, .type-btn { color: #fff; background: none; border: 2px solid #fff; padding: 4px 12px; font-weight: 900; cursor: pointer; font-family: inherit; font-size: 0.8rem; text-transform: uppercase; }
+        .year-btn.active, .type-btn.active { background: var(--accent-color); border-color: var(--accent-color); }
+
+        #legend { position: absolute; bottom: 75px; right: 15px; background: white; border: 3px solid #000; padding: 10px; z-index: 2000; box-shadow: 4px 4px 0px rgba(0,0,0,0.1); width: 200px;}
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.7rem; font-weight: 900; cursor: pointer; text-transform: uppercase;}
+        .legend-main-row { display: flex; align-items: center; gap: 8px; flex-grow: 1; opacity: 0.4; transition: opacity 0.2s; }
+        .legend-main-row.active { opacity: 1; }
+        .sub-cat-container { margin-left: 20px; display: none; margin-top: 4px; border-left: 2px solid #eee; padding-left: 8px; }
+        .sub-cat-container.open { display: block; }
+        .legend-color { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; flex-shrink: 0; }
+        .arrow-toggle { font-size: 0.6rem; cursor: pointer; padding: 2px 5px; background: #eee; border-radius: 3px; }
+
+        .list-section { margin-bottom: 10px; }
+        .list-header { cursor: pointer; font-weight: 900; font-size: 0.85rem; text-transform: uppercase; background: #f4f4f4; padding: 8px; border: 1px solid #000; display: flex; justify-content: space-between; align-items: center; }
+        .list-content { display: none; padding: 10px; border: 1px solid #eee; border-top: none; }
+        .list-content.open { display: block; }
+        .partner-link { color: var(--accent-color); font-weight: 900; cursor: pointer; text-decoration: underline; font-size: 0.75rem; margin-right: 10px; display: inline-block; }
+
+        #admin-controls { position: absolute; top: 15px; right: 15px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+        .btn-round { width: 40px; height: 40px; border-radius: 50%; background: #000; color: #fff; border: none; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; box-shadow: 3px 3px 0px rgba(0,0,0,0.2); }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 25px; z-index: 3000; display: none; border: 4px solid #000; width: 380px; box-shadow: 20px 20px 0px rgba(0,0,0,0.1); }
+        .btn-full { background: #000; color: #fff; border: none; padding: 12px; cursor: pointer; font-weight: 900; width: 100%; margin-top: 8px; text-transform: uppercase; }
+        
+
+#modal-struct h3 { font-size: 0.9rem; margin: 10px 0 5px 0; text-transform: uppercase; }
+#modal-struct p { font-size: 0.8rem; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="btn-global-list">
+        <button class="tab-btn" onclick="renderPartnersList()">Partenaires</button>
+        <button class="tab-btn" onclick="renderProjectsList()">Projets</button>
+    </div>
+
+    <div id="search-container">
+        <input type="text" class="search-input" id="search-input" placeholder="Rechercher une structure..." oninput="handleSearch(this.value)">
+        <div id="search-results"></div>
+    </div>
+
+<div id="admin-controls">
+    <button class="btn-round" onclick="toggleAdminMenu()">⚙</button>
+    <button id="btn-save" class="btn-round" style="display:none;" onclick="exportData()">💾</button>
+    <button id="btn-load" class="btn-round" style="display:none;" onclick="document.getElementById('file-input').click()">📂</button>
+    <input type="file" id="file-input" style="display:none" onchange="importData(event)">
+    
+    <button id="btn-quick-proj" class="btn-round" style="display:none; background:#e1f5fe;" onclick="document.getElementById('global-project-form').style.display='block'">✨</button>
+    
+    <button id="btn-add-struct" class="btn-round" style="display:none;" onclick="openModal('modal-struct')">+</button>
+</div>
+
+<div id="global-project-form" style="background:#fff; padding:20px; border:3px solid #000; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); z-index:9999; width:320px; display:none; box-shadow:0 0 20px rgba(0,0,0,0.5);">
+    <h3 style="margin-top:0; font-size:1.1rem;">✨ CRÉATION MULTI-LIEUX</h3>
+    <input id="g-porteur" placeholder="Structure PORTEUSE">
+    <input id="g-name" placeholder="Nom du projet">
+    <input id="g-year" value="2024-2025" placeholder="Année">
+    <select id="g-type">
+        <option value="Action culturelle">Action culturelle</option>
+        <option value="Parcours de spectacle">Spectacle</option>
+    </select>
+    <input id="g-parts" placeholder="Partenaires (séparés par ,)">
+    <textarea id="g-desc" placeholder="Petite description..."></textarea>
+    
+    <button class="btn-full" onclick="createGlobalProject()" style="background:#000; color:#fff; margin-bottom:5px;">DIFFUSER</button>
+    <button class="btn-full" onclick="document.getElementById('global-project-form').style.display='none'" style="background:#ccc;">ANNULER</button>
+</div>
+
+    <div id="main-container">
+        <div id="side-panel">
+            <div style="position: sticky; top: 0; background: #fff; padding: 20px 25px 10px 25px; z-index: 10; border-bottom: 1px solid #eee;">
+                <span style="float:right; cursor:pointer; font-weight:900; font-size:1.5rem;" onclick="closePanel()">×</span>
+                <div id="panel-title-nav" style="font-weight: 900; font-size: 1.1rem; text-transform: uppercase;"></div>
+            </div>
+            <div id="panel-body" style="padding:20px 25px;"></div>
+        </div>
+        <div id="map"></div>
+    </div>
+
+    <div id="legend"></div>
+    
+    <div id="timeline">
+        <div class="filter-left">
+            <button class="type-btn active" id="type-tout" onclick="setTypeFilter('TOUT')">TOUT</button>
+            <button class="type-btn" onclick="setTypeFilter('Action culturelle')">Action culturelle</button>
+            <button class="type-btn" onclick="setTypeFilter('Parcours de spectacle')">Spectacle</button>
+        </div>
+        <div class="timeline-right" id="year-timeline"></div>
+    </div>
+
+    <datalist id="struct-suggestions"></datalist> 
+
+    <div id="modal-login" class="modal">
+    <span onclick="closeModal('modal-login')" style="float:right; cursor:pointer; font-weight:900; font-size:1.5rem;">×</span> 
+    <h3 style="margin-top:0;">ACCÈS ADMIN</h3>
+    <input type="password" id="admin-pass" placeholder="Mot de passe">
+    <button class="btn-full" onclick="login()">ENTRER</button>
+</div>
+
+    <div id="modal-settings" class="modal">
+        <span onclick="closeModal('modal-settings')" style="float:right; cursor:pointer; font-weight:900;">×</span>
+        <h3>PARAMÈTRES</h3>
+        <input type="password" id="new-pass" placeholder="Nouveau mot de passe">
+        <button class="btn-full" onclick="changePass()">CHANGER LE MOT DE PASSE</button>
+        <button class="btn-full" style="background:red" onclick="logout()">SE DÉCONNECTER</button>
+    </div> 
+
+   <div id="modal-struct" class="modal" style="width: 380px; max-height: 80vh; overflow-y: auto; padding: 15px;">
+        <span onclick="closeModal('modal-struct')" style="float:right; cursor:pointer; font-weight:900; font-size:1.5rem;">×</span>
+        <h3 id="struct-modal-title" style="margin-top: 0; font-size: 1.1rem;">GESTION</h3>
+    
+        <p><b id="struct-action-label">Ajouter un lieu</b></p>
+        <input id="s-name" placeholder="Nom structure">
+       <input id="s-addr" placeholder="Adresse complète">
+      <select id="s-cat-select" style="width: 100%; margin-bottom: 10px;"></select>
+    
+      <button class="btn-full" id="btn-struct-submit" onclick="addStructure()">CRÉER LIEU</button>
+        <button class="btn-full" id="btn-struct-cancel" style="display:none; background:#666" onclick="closeModal('modal-struct')">ANNULER</button>
+    
+        <hr style="margin: 15px 0;">
+    
+        <p><b>Catégories & Sous-catégories</b></p>
+        <div id="cat-admin-list" style="margin-bottom: 10px; max-height: 120px; overflow-y: auto; border: 1px solid #ccc; padding: 5px; font-size: 0.8rem;"></div>
+    
+        <input id="new-cat-name" placeholder="Nom de la catégorie">
+        <select id="new-cat-parent">
+            <option value="">-- Catégorie Principale --</option>
+        </select>
+        <input type="color" id="new-cat-color" value="#ff0080" style="height:35px; padding: 2px; cursor: pointer;">
+    
+        <button class="btn-full" onclick="addCategory()" style="margin-top: 10px;">AJOUTER CATÉGORIE</button>
+   </div> 
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script>
+        const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
+
+        let data = JSON.parse(localStorage.getItem('mouche_vMaillage')) || { 
+            structures: [], categories: [{name: "Culture", color: "#ff0080", parent: null}], password: "Mouche!"
+        }; 
+        
+        let markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
+        let isAdmin = false; 
+        let currentYear = "TOUT"; 
+        let currentType = "TOUT";
+        let activeCats = data.categories.map(c => c.name);
+        let markersMap = {}; 
+        let openSubMenus = [];
+        let editingStructIdx = null;
+        let editingProj = null;
+
+        function save() { localStorage.setItem('mouche_vMaillage', JSON.stringify(data)); render(); }
+
+        function render() {
+            markerCluster.clearLayers(); 
+            markersMap = {};
+            
+            // Timeline
+            const years = new Set();
+            data.structures.forEach(s => s.projects.forEach(p => years.add(p.year)));
+            document.getElementById('year-timeline').innerHTML = `<button class="year-btn ${currentYear==='TOUT'?'active':''}" onclick="setYear('TOUT')">TOUT</button>` + 
+                Array.from(years).sort().map(y => `<button class="year-btn ${currentYear===y?'active':''}" onclick="setYear('${y}')">${y}</button>`).join('');
+
+            // Admin Visibility
+           document.querySelectorAll('#btn-save, #btn-load, #btn-add-struct, #btn-quick-proj').forEach(b => {
+    b.style.display = isAdmin ? 'flex' : 'none';
+});
+
+            // Légende Cascade
+            const mainCats = data.categories.filter(c => !c.parent);
+            document.getElementById('legend').innerHTML = mainCats.map(c => {
+                const subs = data.categories.filter(sc => sc.parent === c.name);
+                const hasSubs = subs.length > 0;
+                const isOpen = openSubMenus.includes(c.name);
+                return `<div class="legend-group">
+                    <div class="legend-item">
+                        <div class="legend-main-row ${activeCats.includes(c.name)?'active':''}" onclick="toggleCatFilter('${c.name}', true)">
+                            <div class="legend-color" style="background:${c.color}"></div> ${c.name}
+                        </div>
+                        ${hasSubs ? `<span class="arrow-toggle" onclick="event.stopPropagation(); toggleSubMenu('${c.name}')">${isOpen ? '▲' : '▼'}</span>` : ''} 
+                    </div>
+                    <div class="sub-cat-container ${isOpen ? 'open' : ''}">
+                        ${subs.map(sc => `<div class="legend-item ${activeCats.includes(sc.name)?'active':''}" onclick="toggleCatFilter('${sc.name}', false)" style="opacity:${activeCats.includes(sc.name)?'1':'0.4'}">
+                            <div class="legend-color" style="background:${sc.color}; width:8px; height:8px;"></div> ${sc.name}
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Marqueurs
+            data.structures.forEach((s, idx) => {
+                const passYear = currentYear === "TOUT" || s.projects.some(p => p.year === currentYear);
+                const passType = currentType === "TOUT" || s.projects.some(p => p.type === currentType);
+                if (activeCats.includes(s.category) && passYear && passType) {
+                    const m = L.circleMarker([s.lat, s.lng], { color: '#000', weight: 1.5, fillColor: s.color, fillOpacity: 1, radius: 7 });
+                    m.on('click', () => openPanel(idx));
+                    markerCluster.addLayer(m); 
+                    markersMap[idx] = m;
+                }
+            });
+            map.addLayer(markerCluster);
+            
+            const catSelect = document.getElementById('s-cat-select');
+            if(catSelect) catSelect.innerHTML = data.categories.map((c,i)=>`<option value="${c.name}">${c.name}</option>`).join('');
+            
+            // Admin list categories
+            const catAdminList = document.getElementById('cat-admin-list');
+            if(catAdminList) {
+                catAdminList.innerHTML = data.categories.map((c, i) => `
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:5px;">
+                        <span>${c.parent ? '↳ ' : ''}${c.name}</span>
+                        <div>
+                            <span onclick="moveCat(${i}, -1)" style="cursor:pointer">▲</span>
+                            <span onclick="moveCat(${i}, 1)" style="cursor:pointer">▼</span>
+                            <span onclick="delCat(${i})" style="color:red; cursor:pointer; margin-left:5px;">✖</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function toggleSubMenu(name) {
+            const idx = openSubMenus.indexOf(name);
+            if(idx > -1) openSubMenus.splice(idx, 1); else openSubMenus.push(name);
+            render();
+        }
+
+        function toggleCatFilter(name, isParent) {
+            const index = activeCats.indexOf(name);
+            const subCats = data.categories.filter(c => c.parent === name).map(c => c.name);
+            if (index > -1) {
+                activeCats.splice(index, 1);
+                if (isParent) activeCats = activeCats.filter(c => !subCats.includes(c));
+            } else {
+                activeCats.push(name);
+                if (isParent) subCats.forEach(sc => { if(!activeCats.includes(sc)) activeCats.push(sc); });
+            }
+            render();
+        }
+
+        function setYear(y) { currentYear = y; render(); }
+        function setTypeFilter(t) { 
+            currentType = t; 
+            document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            render(); 
+        }
+
+        function toggleAcc(id) {
+            const el = document.getElementById(id);
+            if(el) el.classList.toggle('open');
+        }
+
+function createGlobalProject() {
+    const porteurName = document.getElementById('g-porteur').value.trim();
+    const projName = document.getElementById('g-name').value.trim();
+    const year = document.getElementById('g-year').value.trim();
+    const type = document.getElementById('g-type').value;
+    const partsRaw = document.getElementById('g-parts').value;
+    const desc = document.getElementById('g-desc').value.trim();
+
+    if (!porteurName || !projName) { alert("Nom porteur et projet requis !"); return; }
+
+    let targets = [porteurName];
+    if (partsRaw) {
+        partsRaw.split(',').forEach(p => { if(p.trim() !== "") targets.push(p.trim()); });
+    }
+
+    let count = 0;
+    targets.forEach(targetName => {
+        const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === targetName.toLowerCase());
+        if (sIdx !== -1) {
+            const newProj = {
+                name: projName, year: year, type: type, part: partsRaw,
+                desc: desc, img: "", word: "En savoir plus", pdf: ""
+            };
+            if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
+            data.structures[sIdx].projects.push(newProj);
+            count++;
+        }
+    });
+
+    if (count > 0) {
+        alert("Projet diffusé sur " + count + " structures !");
+        save();
+        document.getElementById('global-project-form').style.display = 'none';
+    } else {
+        alert("Aucune structure trouvée. Vérifie l'orthographe exacte.");
+    }
+}
+
+        function renderProjectsList() {
+			const sidePanel = document.getElementById('side-panel');
+			sidePanel.classList.remove('half-page'); // <--- Retour à 35%
+			sidePanel.classList.add('active');render();
+			
+			document.getElementById('panel-title-nav').innerText = "Liste des projets";
+            let allP = [];
+            data.structures.forEach(s => s.projects.forEach(p => allP.push({...p, sName: s.name, sIdx: data.structures.indexOf(s)})));
+            const uniqueNames = [...new Set(allP.map(p => p.name))];
+            let html = uniqueNames.map((uName, i) => {
+                const variants = allP.filter(p => p.name === uName);
+                return `<div class="list-section">
+                    <div class="list-header" onclick="toggleAcc('lproj-${i}')">
+                        <span>${uName}</span> <span class="year-btn" style="font-size:0.6rem; border:none; background:#000;">${variants[0].year}</span>
+                    </div>
+                    <div class="list-content" id="lproj-${i}">
+                        <p style="font-size:0.75rem; color:#666;">Partagé entre :</p>
+                        ${variants.map(v => `<div class="partner-link" onclick="openPanel(${v.sIdx})">${v.sName}</div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('panel-body').innerHTML = html;
+        }
+
+        function renderPartnersList() {
+        const sidePanel = document.getElementById('side-panel');
+		sidePanel.classList.remove('half-page'); // <--- Retour à 35%
+		sidePanel.classList.add('active');render();
+    
+	document.getElementById('panel-title-nav').innerText = "Liste des partenaires";
+            const parentCats = data.categories.filter(c => !c.parent);
+            let html = parentCats.map((pCat, pi) => {
+                const directStructs = data.structures.filter(s => s.category === pCat.name);
+                const subCats = data.categories.filter(c => c.parent === pCat.name);
+                return `<div class="list-section">
+                    <div class="list-header" onclick="toggleAcc('p-group-${pi}')" style="border-left: 5px solid ${pCat.color}">
+                        <span style="color:${pCat.color}; font-weight:900;">${pCat.name.toUpperCase()}</span>
+                        <span>▼</span>
+                    </div>
+                    <div class="list-content" id="p-group-${pi}">
+                        ${directStructs.map(s => `<div class="partner-link" style="display:block; margin-bottom:5px;" onclick="openPanel(${data.structures.indexOf(s)})">• ${s.name}</div>`).join('')}
+                        ${subCats.map((sCat, si) => {
+                            const sCatStructs = data.structures.filter(s => s.category === sCat.name);
+                            if (sCatStructs.length === 0) return '';
+                            return `<div style="margin: 10px 0 5px 10px; border-left: 2px solid #eee; padding-left: 10px;">
+                                <div onclick="toggleAcc('sub-group-${pi}-${si}')" style="cursor:pointer; font-weight:700; font-size:0.75rem; color:#666;">${sCat.name} +</div>
+                                <div class="list-content" id="sub-group-${pi}-${si}">
+                                    ${sCatStructs.map(s => `<div class="partner-link" style="display:block" onclick="openPanel(${data.structures.indexOf(s)})">${s.name}</div>`).join('')}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('panel-body').innerHTML = html;
+        }
+
+function openPanel(idx) {
+    const s = data.structures[idx];
+    if (!s) return;
+	const sidePanel = document.getElementById('side-panel');
+    sidePanel.classList.add('active');
+    const catObj = data.categories.find(c => c.name === s.category);
+
+    document.getElementById('side-panel').classList.add('active');
+
+    const navTitle = document.getElementById('panel-title-nav');
+    if (navTitle) navTitle.innerHTML = "";
+
+    hideAllMarkersExcept([idx]);
+    highlight(idx, true);
+
+    let categoryHTML = catObj ? `<div style="color:${s.color}; font-weight:900; font-size:0.8rem;">${catObj.parent ? catObj.parent.toUpperCase() + ' - ' : ''}${s.category.toUpperCase()}</div>` : "";
+
+    // Titre descendu (margin-top: 25px)
+    let html = `<h2 style="margin-top:25px; margin-bottom:5px;">${s.name.toUpperCase()}</h2>
+                ${categoryHTML}
+                <p style="margin-top:5px;"><small>${s.address}</small></p>`;
+
+    if (isAdmin) {
+        html += `<div style="display:flex; gap:15px; margin-bottom:15px;">
+            <button onclick="editStruct(${idx})" style="color:#000; background:none; border:none; cursor:pointer; font-size:0.7rem; font-weight:900; padding:0;">✏️ MODIFIER LIEU</button>
+            <button onclick="delStruct(${idx})" style="color:red; background:none; border:none; cursor:pointer; font-size:0.7rem; font-weight:900; padding:0;">🗑 SUPPRIMER</button>
+        </div>`;
+    }
+    html += `<hr style="border:1px solid #eee; margin:20px 0;">`;
+
+    const projects = currentYear === "TOUT" ? s.projects : s.projects.filter(p => p.year === currentYear);
+
+    projects.forEach((p, pi) => {
+        const globalIndex = s.projects.indexOf(p);
+        const partsHtml = p.part ? p.part.split(',').map(n => {
+            const clean = n.trim();
+            const tIdx = data.structures.findIndex(st => st.name.toLowerCase() === clean.toLowerCase());
+            return tIdx !== -1 ? `<span class="partner-link" onclick="openPanel(${tIdx})">${clean}</span>` : `<span>${clean}</span>`;
+        }).join(' ') : "";
+
+        html += `<div class="project-item" style="border-bottom: 1px solid #eee; padding: 15px 0;">
+            ${isAdmin ? `<div style="text-align:right; margin-bottom:5px;"><span onclick="editProj(${idx}, ${globalIndex})" style="cursor:pointer; margin-right:10px;">✏️</span> <span onclick="delProj(${idx}, ${globalIndex})" style="cursor:pointer; color:red">🗑️</span></div>` : ''}
+            
+            <div class="project-header" onclick="toggleProject(${pi}, '${(p.part || "").replace(/'/g, "\\'")}', ${idx})" style="cursor:pointer; display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <div style="font-weight:900; font-size:1.1rem; text-transform:uppercase; line-height:1.2;">${p.name}</div>
+                    <div style="font-size:0.8rem; margin-top:4px; font-weight:700;">
+                        <span style="color:var(--accent-color);">${p.year}</span> 
+                        <span style="color:#000; margin:0 5px; font-size:1.2rem; vertical-align:middle;">•</span> 
+                        <span style="color:var(--accent-color);">${p.type || ''}</span>
+                    </div>
+                </div>
+                <span id="arrow-${pi}" style="font-size:0.8rem; margin-top:5px; color:#000;">▼</span>
+            </div>
+            
+            <div class="project-body" id="body-${pi}" style="display:none; padding-top:15px;">
+                <div style="margin-bottom:10px; font-size:0.8rem;">${partsHtml}</div>
+                ${p.img ? `<img src="${p.img}" style="width:100%; border:3px solid #000; margin-bottom:10px;">` : ''}
+                <div class="project-description" style="font-size:0.9rem; line-height:1.4;">${p.desc}</div>
+                ${p.pdf ? `<a href="${p.pdf}" target="_blank" class="url-link" style="display:inline-block; margin-top:10px; color:var(--accent-color); font-weight:900; text-decoration:underline;">${p.word || 'En savoir plus'}</a>` : ''}
+            </div>
+        </div>`;
+    });
+
+    if (isAdmin) {
+        html += `<div id="proj-form" style="background:#f9f9f9; padding:15px; border:2px solid #000; margin-top:20px;">
+            <h4 id="proj-form-title" style="margin-top:0;">NOUVEAU PROJET</h4>
+            <input id="py" value="2024-2025" placeholder="Année">
+            <input id="pn" placeholder="Titre du projet">
+            <select id="ptype">
+                <option value="">-- Type de projet --</option>
+                <option value="Action culturelle">Action culturelle</option>
+                <option value="Parcours de spectacle">Spectacle</option>
+            </select>
+            <input id="pt" placeholder="Partenaires (séparés par virgule)">
+            <textarea id="pd" placeholder="Description détaillée" oninput="autoExpand(this)"></textarea>
+            <input id="pimg" placeholder="URL Image">
+            <input id="pw" placeholder="Texte du bouton/lien">
+            <input id="pl" placeholder="URL du lien">
+            <button class="btn-full" id="btn-proj-submit" onclick="addProj(${idx})">VALIDER PROJET</button>
+        </div>`;
+    }
+
+    document.getElementById('panel-body').innerHTML = html;
+    if(markersMap[idx]) map.panTo(markersMap[idx].getLatLng());
+}
+
+function highlight(idx, isMain, isPartner) {
+    const m = markersMap[idx];
+    if (!m) return;
+    if (isMain) m.setStyle({ radius: 12, weight: 4 });
+    else if (isPartner) m.setStyle({ radius: 9, weight: 4 });
+}
+
+function hideAllMarkersExcept(visibleIndices) {
+    markerCluster.clearLayers();
+    visibleIndices.forEach(idx => { if (markersMap[idx]) markerCluster.addLayer(markersMap[idx]); });
+}
+
+function toggleProject(pi, partners, currentIdx) {
+    const body = document.getElementById(`body-${pi}`);
+    const arrow = document.getElementById(`arrow-${pi}`);
+    const sidePanel = document.getElementById('side-panel');
+    
+    if (!body) return;
+
+    const isHidden = body.style.display === "none" || body.style.display === "";
+
+    if (isHidden) {
+        body.style.display = "block";
+        if (arrow) arrow.innerText = "▲";
+        if (sidePanel) sidePanel.classList.add('half-page');
+
+        let visibleIndices = [currentIdx];
+        
+        if (partners && partners !== "undefined" && partners !== "") {
+            partners.split(',').forEach(n => {
+                const pName = n.trim().toLowerCase();
+                const pIdx = data.structures.findIndex(st => st.name.toLowerCase() === pName);
+                if (pIdx !== -1) {
+                    visibleIndices.push(pIdx);
+                }
+            });
+        }
+        hideAllMarkersExcept(visibleIndices);
+        const markersToShow = visibleIndices.map(i => markersMap[i]).filter(m => m);
+        
+        if (markersToShow.length > 0) {
+            const group = new L.featureGroup(markersToShow);
+
+            map.fitBounds(group.getBounds(), {
+                paddingTopLeft: [50, 50],
+                paddingBottomRight: [window.innerWidth / 2 + 20, 50], 
+                maxZoom: 15,
+                animate: true
+            });
+        }
+        visibleIndices.forEach(vIdx => {
+            highlight(vIdx, vIdx === currentIdx, vIdx !== currentIdx);
+        });
+
+    } else {
+        body.style.display = "none";
+        if (arrow) arrow.innerText = "▼";
+        if (sidePanel) sidePanel.classList.remove('half-page');
+        
+        // Remet la barre de recherche au milieu si tu as utilisé le "Plan B"
+        const search = document.getElementById('search-container');
+        if(search) search.style.left = "50%";
+        
+        openPanel(currentIdx); 
+    }
+}
+
+        function handleSearch(v) {
+            const res = document.getElementById('search-results');
+            if(!v || v.length < 2) { res.style.display = 'none'; return; }
+            const hits = data.structures.filter(s => s.name.toLowerCase().includes(v.toLowerCase()));
+            res.innerHTML = hits.map(h => `<div class="search-item" onclick="openPanel(${data.structures.indexOf(h)})"><b>${h.name}</b></div>`).join('');
+            res.style.display = hits.length ? 'block' : 'none';
+        }
+
+        async function addStructure() {
+            const addr = document.getElementById('s-addr').value;
+            const name = document.getElementById('s-name').value;
+            const catName = document.getElementById('s-cat-select').value;
+            if(!addr || !name) return alert("Nom et adresse requis");
+            const catObj = data.categories.find(c => c.name === catName);
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addr)}`);
+                const json = await res.json();
+                if(json.length > 0) {
+                    const newS = { name, lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon), address: addr, category: catName, color: catObj.color, projects: editingStructIdx !== null ? data.structures[editingStructIdx].projects : [] };
+                    if(editingStructIdx !== null) data.structures[editingStructIdx] = newS; else data.structures.push(newS);
+                    save(); closeModal('modal-struct');
+                } else alert("Adresse non trouvée");
+            } catch(e) { alert("Erreur réseau"); }
+        }
+
+       function resetStructModal() {
+    editingStructIdx = null; 
+    document.getElementById('s-name').value = "";
+    document.getElementById('s-addr').value = "";
+    document.getElementById('struct-modal-title').innerText = "GESTION";
+    document.getElementById('struct-action-label').innerText = "Ajouter un lieu";
+    document.getElementById('btn-struct-submit').innerText = "CRÉER LIEU";
+    document.getElementById('btn-struct-cancel').style.display = "none";
+        }
+
+        function editStruct(idx) {
+            editingStructIdx = idx;
+            const s = data.structures[idx];
+            document.getElementById('s-name').value = s.name;
+            document.getElementById('s-addr').value = s.address;
+            document.getElementById('s-cat-select').value = s.category;
+            document.getElementById('struct-modal-title').innerText = "MODIFIER LIEU";
+            document.getElementById('btn-struct-submit').innerText = "ENREGISTRER";
+            document.getElementById('btn-struct-cancel').style.display = "block";
+            openModal('modal-struct');
+        }
+
+        function delStruct(i) { if(confirm("Supprimer ce lieu ?")) { data.structures.splice(i,1); save(); closePanel(); } }
+
+     function addProj(idx) {
+        const py = document.getElementById('py').value;
+        const pn = document.getElementById('pn').value;
+        const ptype = document.getElementById('ptype').value;
+        if(!py || !pn) return alert("Année et Titre requis");
+        
+        const pObj = { 
+            year: py, 
+            name: pn, 
+            type: ptype, 
+            part: document.getElementById('pt').value, 
+            desc: document.getElementById('pd').value, 
+            word: document.getElementById('pw').value, 
+            pdf: document.getElementById('pl').value, 
+            img: document.getElementById('pimg').value 
+        };
+        
+        if(editingProj !== null) { data.structures[idx].projects[editingProj] = pObj; editingProj = null; } 
+        else data.structures[idx].projects.push(pObj);
+        save(); openPanel(idx);
+    }
+
+       function editProj(sIdx, pIdx) {
+        editingProj = pIdx;
+        const p = data.structures[sIdx].projects[pIdx];
+        document.getElementById('py').value = p.year;
+        document.getElementById('pn').value = p.name;
+        document.getElementById('ptype').value = p.type || "";
+        document.getElementById('pt').value = p.part || "";
+        document.getElementById('pd').value = p.desc || "";
+        document.getElementById('pimg').value = p.img || "";
+        document.getElementById('pw').value = p.word || "";
+        document.getElementById('pl').value = p.pdf || "";
+        document.getElementById('proj-form-title').innerText = "MODIFIER PROJET";
+        document.getElementById('proj-form').scrollIntoView();
+    }
+
+        function delProj(sIdx, pIdx) { if(confirm("Supprimer ce projet ?")) { data.structures[sIdx].projects.splice(pIdx, 1); save(); openPanel(sIdx); } }
+
+        function addCategory() {
+            const n = document.getElementById('new-cat-name').value;
+            const p = document.getElementById('new-cat-parent').value;
+            const c = document.getElementById('new-cat-color').value;
+            if(n) { data.categories.push({name: n, color: c, parent: p || null}); save(); }
+        }
+
+        function moveCat(i, step) {
+            const target = i + step;
+            if (target >= 0 && target < data.categories.length) { 
+                [data.categories[i], data.categories[target]] = [data.categories[target], data.categories[i]]; 
+                save(); 
+            }
+        }
+        function delCat(i) { if(confirm("Supprimer ?")) { data.categories.splice(i, 1); save(); } }
+
+        function login() {
+            if(document.getElementById('admin-pass').value === data.password) {
+                isAdmin = true; closeModal('modal-login'); render();
+            } else alert("Mauvais mot de passe");
+        }
+        function logout() { isAdmin = false; location.reload(); }
+        function changePass() { data.password = document.getElementById('new-pass').value; save(); closeModal('modal-settings'); }
+
+        function toggleAdminMenu() { isAdmin ? openModal('modal-settings') : openModal('modal-login'); }
+        function openModal(id) { if(id==='modal-struct' && editingStructIdx === null) resetStructModal(); document.getElementById(id).style.display='block'; }
+        function closeModal(id) { document.getElementById(id).style.display='none'; }
+        
+		function closePanel() {
+		const sidePanel = document.getElementById('side-panel');
+		sidePanel.classList.remove('active', 'half-page');
+		const search = document.getElementById('search-container');
+		if(search) search.style.left = "50%";
+		render(); 
+        const allMarkers = Object.values(markersMap);
+		if(allMarkers.length) {
+        map.fitBounds(new L.featureGroup(allMarkers).getBounds(), {padding: [50, 50]});
+			}
+		}
+       
+	   function exportData() {
+            const b = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download="mouche_data.json"; a.click();
+        }
+        function importData(e) {
+            const r = new FileReader();
+            r.onload = (ev) => { data = JSON.parse(ev.target.result); save(); location.reload(); };
+            r.readAsText(e.target.files[0]);
+        }
+
+        function autoExpand(t) { t.style.height = 'inherit'; t.style.height = t.scrollHeight + "px"; }
+        function handleShortcuts(e) {
+            if (e.ctrlKey && e.key === 'b') { e.preventDefault(); wrapSelection(e.target, '<b>', '</b>'); }
+            if (e.ctrlKey && e.key === 'i') { e.preventDefault(); wrapSelection(e.target, '<i>', '</i>'); }
+        }
+        function wrapSelection(el, sTag, eTag) {
+            const s = el.selectionStart, e = el.selectionEnd, v = el.value;
+            el.value = v.substring(0, s) + sTag + v.substring(s, e) + eTag + v.substring(e);
+        }
+
+        render();
+    </script>
+</body>
+</html>
