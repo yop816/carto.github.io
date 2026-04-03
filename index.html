@@ -286,34 +286,37 @@ async function importData(event) {
         }
 		
 function render() {
+    if (!data) return;
     markerCluster.clearLayers(); 
     markersMap = {};
     
-    // 1. Timeline (Génération des boutons d'années)
+    // --- 1. TIMELINE ---
     const years = new Set();
     data.structures.forEach(s => s.projects.forEach(p => years.add(p.year)));
-    document.getElementById('year-timeline').innerHTML = `<button class="year-btn ${currentYear==='TOUT'?'active':''}" onclick="setYear('TOUT')">TOUT</button>` + 
-        Array.from(years).sort().map(y => `<button class="year-btn ${currentYear===y?'active':''}" onclick="setYear('${y}')">${y}</button>`).join('');
+    const timelineEl = document.getElementById('year-timeline');
+    if (timelineEl) {
+        timelineEl.innerHTML = `<button class="year-btn ${currentYear==='TOUT'?'active':''}" onclick="setYear('TOUT')">TOUT</button>` + 
+            Array.from(years).sort().map(y => `<button class="year-btn ${currentYear===y?'active':''}" onclick="setYear('${y}')">${y}</button>`).join('');
+    }
 
-    // 2. Visibilité des boutons Admin globaux
+    // --- 2. BOUTONS ADMIN GLOBAUX ---
     document.querySelectorAll('#btn-save, #btn-load, #btn-add-struct, #btn-quick-proj').forEach(b => {
         b.style.display = isAdmin ? 'flex' : 'none';
     });
 
-    // 3. Légende Cascade
+    // --- 3. LÉGENDE ---
     const mainCats = data.categories.filter(c => !c.parent);
     const legendEl = document.getElementById('legend');
     if (legendEl) {
         legendEl.innerHTML = mainCats.map(c => {
             const subs = data.categories.filter(sc => sc.parent === c.name);
-            const hasSubs = subs.length > 0;
             const isOpen = openSubMenus.includes(c.name);
             return `<div class="legend-group">
                 <div class="legend-item">
                     <div class="legend-main-row ${activeCats.includes(c.name)?'active':''}" onclick="toggleCatFilter('${c.name}', true)">
                         <div class="legend-color" style="background:${c.color}"></div> ${c.name}
                     </div>
-                    ${hasSubs ? `<span class="arrow-toggle" onclick="event.stopPropagation(); toggleSubMenu('${c.name}')">${isOpen ? '▲' : '▼'}</span>` : ''} 
+                    ${subs.length > 0 ? `<span class="arrow-toggle" onclick="event.stopPropagation(); toggleSubMenu('${c.name}')">${isOpen ? '▲' : '▼'}</span>` : ''} 
                 </div>
                 <div class="sub-cat-container ${isOpen ? 'open' : ''}">
                     ${subs.map(sc => `<div class="legend-item ${activeCats.includes(sc.name)?'active':''}" onclick="toggleCatFilter('${sc.name}', false)" style="opacity:${activeCats.includes(sc.name)?'1':'0.4'}">
@@ -324,19 +327,14 @@ function render() {
         }).join('');
     }
 
-    // 4. Marqueurs sur la carte
+    // --- 4. MARQUEURS ---
     data.structures.forEach((s, idx) => {
         const passYear = currentYear === "TOUT" || s.projects.some(p => p.year === currentYear);
         const passType = currentType === "TOUT" || s.projects.some(p => p.type === currentType);
-        
         if (activeCats.includes(s.category) && passYear && passType) {
-            // On récupère la couleur de la catégorie du lieu
             const catObj = data.categories.find(c => c.name === s.category);
             const col = catObj ? catObj.color : '#000';
-
-            const m = L.circleMarker([s.lat, s.lng], { 
-                color: '#000', weight: 1.5, fillColor: col, fillOpacity: 1, radius: 7 
-            });
+            const m = L.circleMarker([s.lat, s.lng], { color: '#000', weight: 1.5, fillColor: col, fillOpacity: 1, radius: 7 });
             m.on('click', () => openPanel(idx));
             markerCluster.addLayer(m); 
             markersMap[idx] = m;
@@ -344,38 +342,37 @@ function render() {
     });
     map.addLayer(markerCluster);
     
-    // 5. Interface Admin Interne (uniquement si connecté)
+    // --- 5. LOGIQUE ADMIN (CE QUI CLOCHE) ---
     if (isAdmin) {
-        // Remplissage du select des catégories (ajout de lieu)
-        const catSelect = document.getElementById('s-cat-select');
-        if(catSelect) {
-            catSelect.innerHTML = data.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-        }
-
-        // Remplissage du select des parents (création de catégorie)
-        const parentSelect = document.getElementById('new-cat-parent');
-        if(parentSelect) {
-            const mainOnly = data.categories.filter(c => !c.parent);
-            parentSelect.innerHTML = `<option value="">-- Catégorie Principale --</option>` + 
-                mainOnly.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-        }
-
-        // Liste de gestion des catégories
+        // Remplissage de la liste des catégories (Gestion)
         const catAdminList = document.getElementById('cat-admin-list');
-        if(catAdminList) {
+        if (catAdminList) {
             catAdminList.innerHTML = data.categories.map((c, i) => `
-                <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:5px; border-bottom:1px solid #eee; padding-bottom:2px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; margin-bottom:5px; border-bottom: 1px solid #eee;">
                     <span>${c.parent ? '↳ ' : ''}${c.name}</span>
                     <div>
                         <span onclick="moveCat(${i}, -1)" style="cursor:pointer">▲</span>
                         <span onclick="moveCat(${i}, 1)" style="cursor:pointer">▼</span>
                         <span onclick="delCat(${i})" style="color:red; cursor:pointer; margin-left:5px;">✖</span>
                     </div>
-                </div>
-            `).join('');
+                </div>`).join('');
+        }
+
+        // Remplissage du select des catégories (Ajout de Lieu)
+        const sCatSelect = document.getElementById('s-cat-select');
+        if (sCatSelect) {
+            sCatSelect.innerHTML = data.categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+
+        // Remplissage du select des parents (Ajout de Catégorie)
+        const pCatSelect = document.getElementById('new-cat-parent');
+        if (pCatSelect) {
+            const mains = data.categories.filter(c => !c.parent);
+            pCatSelect.innerHTML = `<option value="">-- Catégorie Principale --</option>` + 
+                mains.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
         }
     }
-} 
+}
         function toggleSubMenu(name) {
             const idx = openSubMenus.indexOf(name);
             if(idx > -1) openSubMenus.splice(idx, 1); else openSubMenus.push(name);
