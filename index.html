@@ -187,57 +187,56 @@ input, textarea, select {
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script>
-        const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
+const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
 
-const SUPABASE_URL = 'https://evgruofgrxipcvypbuxd.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_mSI8F2XxNaxGnv3A8iEOYw_tLPqnsDh';
-const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_URL = 'https://ton-url.supabase.co';
+        const SUPABASE_KEY = 'ta-clef-anon';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let data = { structures: [], categories: [], password: "Mouche!" };
-
-// Fonction pour charger les données au démarrage
-async function loadDataFromCloud() {
-    const { data: records, error } = await _supabase
-        .from('data_storage')
-        .select('content')
-        .limit(1)
-        .single();
-
-    if (records) {
-        data = records.content;
-        render(); // On redessine la carte une fois les données reçues
-    }
-}
-
-// Appeler le chargement au lancement
-loadDataFromCloud();
-        
+        let data = { structures: [], categories: [], password: "Mouche!" };
         let markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
         let isAdmin = false; 
         let currentYear = "TOUT"; 
         let currentType = "TOUT";
-        let activeCats = data.categories.map(c => c.name);
         let markersMap = {}; 
-        let openSubMenus = [];
         let editingStructIdx = null;
         let editingProj = null;
 
-async function save() {
-    // 1. On met à jour visuellement l'interface
-    render();
+        async function loadDataFromCloud() {
+            try {
+                const { data: records, error } = await _supabase
+                    .from('data_storage')
+                    .select('content')
+                    .eq('id', 1)
+                    .single();
 
-    // 2. On envoie les données à Supabase (on met à jour la ligne ID 1)
-    const { error } = await _supabase
-        .from('data_storage')
-        .update({ content: data })
-        .eq('id', 1); // Assure-toi que l'ID de ta ligne est bien 1
+                if (records && records.content) {
+                    data = records.content;
+                    // On initialise activeCats ici une fois que les données sont là
+                    window.activeCats = data.categories ? data.categories.map(c => c.name) : [];
+                    render(); 
+                }
+            } catch (e) {
+                console.error("Erreur de chargement:", e);
+            }
+        }
 
-    if (error) {
-        console.error("Erreur de sauvegarde:", error);
-        alert("Erreur lors de la synchronisation cloud");
-    }
-}
+        async function save() {
+            if (typeof render === "function") render();
+            
+            const { error } = await _supabase
+                .from('data_storage')
+                .update({ content: data })
+                .eq('id', 1);
+
+            if (error) {
+                console.error("Erreur de sauvegarde:", error);
+                alert("Erreur de synchronisation cloud");
+            }
+        }
+        loadDataFromCloud();
+		
         function render() {
             markerCluster.clearLayers(); 
             markersMap = {};
