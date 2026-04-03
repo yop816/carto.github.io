@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
-	
+    
     <style>
         :root { --primary-color: #000; --accent-color: #ff0080; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Montserrat', sans-serif; overflow: hidden; background: #fff; }
@@ -17,7 +17,7 @@
 input, textarea, select { 
     width: 100%; 
     margin-bottom: 12px; 
-    padding: 12px;        
+    padding: 12px;         
     box-sizing: border-box; 
     border: 2px solid #000; 
     font-family: inherit;
@@ -39,13 +39,13 @@ input, textarea, select {
         .tab-btn { background: #000; color: #fff; border: 3px solid #000; padding: 10px 15px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 0.7rem; box-shadow: 6px 6px 0px rgba(0,0,0,0.1); }
 
        
-		#search-container {position: absolute;top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 320px;transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Animation fluide */} 
-		.search-input { width: 100%; padding: 10px 15px; border: 3px solid #000; font-weight: 700; box-shadow: 6px 6px 0px rgba(0,0,0,0.1); font-family: inherit; font-size: 0.9rem; outline: none; }
-		body #main-container:has(#side-panel.half-page) ~ #search-container,
-		body:has(#side-panel.half-page) #search-container {
-		left: 75% !important;
-		transform: translateX(-50%); /* On garde le centrage mais sur le point 75% */}
-		#search-results { background: white; border: 3px solid #000; border-top: none; display: none; max-height: 200px; overflow-y: auto; }
+        #search-container {position: absolute;top: 15px; left: 50%; transform: translateX(-50%); z-index: 2000; width: 320px;transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Animation fluide */} 
+        .search-input { width: 100%; padding: 10px 15px; border: 3px solid #000; font-weight: 700; box-shadow: 6px 6px 0px rgba(0,0,0,0.1); font-family: inherit; font-size: 0.9rem; outline: none; }
+        body #main-container:has(#side-panel.half-page) ~ #search-container,
+        body:has(#side-panel.half-page) #search-container {
+        left: 75% !important;
+        transform: translateX(-50%); /* On garde le centrage mais sur le point 75% */}
+        #search-results { background: white; border: 3px solid #000; border-top: none; display: none; max-height: 200px; overflow-y: auto; }
         .search-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.85rem; }
 
         #timeline { position: fixed; bottom: 0; left: 0; width: 100%; height: 60px; background: #000; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 2005; box-sizing: border-box; }
@@ -163,7 +163,7 @@ input, textarea, select {
     
         <p><b id="struct-action-label">Ajouter un lieu</b></p>
         <input id="s-name" placeholder="Nom structure">
-       <input id="s-addr" placeholder="Adresse complète">
+        <input id="s-addr" placeholder="Adresse complète">
       <select id="s-cat-select" style="width: 100%; margin-bottom: 10px;"></select>
     
       <button class="btn-full" id="btn-struct-submit" onclick="addStructure()">CRÉER LIEU</button>
@@ -186,30 +186,29 @@ input, textarea, select {
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-	<script>
-const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
+    <script>
+        // --- 1. VARIABLES GLOBALES (Déclarées au début du script) ---
+        var data = { structures: [], categories: [], password: "Mouche!" };
+        var isAdmin = false; 
+        var currentYear = "TOUT"; 
+        var currentType = "TOUT";
+        var markersMap = {}; 
+        var openSubMenus = []; // Corrigé : déclaré ici
+        var activeCats = [];   // Corrigé : déclaré ici
+        var editingStructIdx = null;
+        var editingProj = null;
+
+        const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
 
-        const SUPABASE_URL = 'https://evgruofgrxipcvypbuxd.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2Z3J1b2ZncnhpcGN2eXBidXhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNzE5MTQsImV4cCI6MjA5MDc0NzkxNH0.k8C0V2KN0eZtsGK4mwx2w3btZ9m6OTzM4ielxGfQCoE';
+        const SUPABASE_URL = 'url'; // Remets ton URL
+        const SUPABASE_KEY = 'clef'; // Remets ta clé
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let data = { structures: [], categories: [], password: "Mouche!" };
         let markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
-        let isAdmin = false; 
-        let currentYear = "TOUT"; 
-        let currentType = "TOUT";
-        let markersMap = {}; 
-		let openSubMenus = [];
-		let activeCats = [];
-        let editingStructIdx = null;
-        let editingProj = null;
-
-// ... (Initialisation map et Supabase OK)
 
 async function loadDataFromCloud() {
     try {
-        // Correction ici : un seul point avant 'from'
         const { data: records, error } = await _supabase
             .from('data_storage')
             .select('content')
@@ -220,8 +219,9 @@ async function loadDataFromCloud() {
 
         if (records && records.content) {
             data = records.content;
-            // On s'assure que activeCats existe pour ne pas faire planter la légende
-            window.activeCats = data.categories ? data.categories.map(c => c.name) : [];
+            // On initialise les variables globales avant le premier render
+            activeCats = data.categories ? data.categories.map(c => c.name) : [];
+            if (!openSubMenus) openSubMenus = []; 
             render(); 
         }
     } catch (e) {
@@ -230,7 +230,6 @@ async function loadDataFromCloud() {
 }
 
 async function save() {
-    // On met à jour l'affichage local d'abord
     if (typeof render === "function") render();
     
     const { error } = await _supabase
@@ -244,7 +243,7 @@ async function save() {
     }
 }
 
-// On lance le chargement
+// On lance le chargement immédiatement
 loadDataFromCloud();
 
 async function importData(event) {
@@ -254,28 +253,25 @@ async function importData(event) {
     const reader = new FileReader();
     reader.onload = async function(e) {
         try {
-            // Analyse du texte du fichier
             const importedData = JSON.parse(e.target.result);
-            
-            // On vérifie si le fichier a la bonne structure
             if (!importedData.structures || !importedData.categories) {
-                throw new Error("Le fichier ne semble pas être au bon format (manque structures ou catégories).");
+                throw new Error("Format de fichier invalide.");
             }
 
             data = importedData;
+            // On prépare les variables nécessaires au render()
+            activeCats = data.categories.map(c => c.name);
+            openSubMenus = []; 
             
-            // Envoi immédiat au Cloud
             const { error } = await _supabase
                 .from('data_storage')
                 .update({ content: data })
                 .eq('id', 1);
 
-            if (error) {
-                throw error;
-            } else {
-                alert("Synchronisé avec le Cloud !");
-                render(); 
-            }
+            if (error) throw error;
+            
+            alert("Synchronisé avec le Cloud !");
+            render(); 
         } catch (err) {
             console.error("Erreur Import:", err);
             alert("Erreur : " + err.message);
@@ -283,6 +279,7 @@ async function importData(event) {
     };
     reader.readAsText(file);
 }
+		
 	   function exportData() {
             const b = new Blob([JSON.stringify(data)], {type: "application/json"});
             const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download="mouche_data.json"; a.click();
@@ -304,25 +301,28 @@ async function importData(event) {
 });
 
             // Légende Cascade
-            const mainCats = data.categories.filter(c => !c.parent);
-            document.getElementById('legend').innerHTML = mainCats.map(c => {
-                const subs = data.categories.filter(sc => sc.parent === c.name);
-                const hasSubs = subs.length > 0;
-                const isOpen = openSubMenus.includes(c.name);
-                return `<div class="legend-group">
-                    <div class="legend-item">
-                        <div class="legend-main-row ${activeCats.includes(c.name)?'active':''}" onclick="toggleCatFilter('${c.name}', true)">
-                            <div class="legend-color" style="background:${c.color}"></div> ${c.name}
-                        </div>
-                        ${hasSubs ? `<span class="arrow-toggle" onclick="event.stopPropagation(); toggleSubMenu('${c.name}')">${isOpen ? '▲' : '▼'}</span>` : ''} 
-                    </div>
-                    <div class="sub-cat-container ${isOpen ? 'open' : ''}">
-                        ${subs.map(sc => `<div class="legend-item ${activeCats.includes(sc.name)?'active':''}" onclick="toggleCatFilter('${sc.name}', false)" style="opacity:${activeCats.includes(sc.name)?'1':'0.4'}">
-                            <div class="legend-color" style="background:${sc.color}; width:8px; height:8px;"></div> ${sc.name}
-                        </div>`).join('')}
-                    </div>
-                </div>`;
-            }).join('');
+        const mainCats = data.categories.filter(c => !c.parent);
+	const legendEl = document.getElementById('legend');
+if (legendEl) {
+    legendEl.innerHTML = mainCats.map(c => {
+        const subs = data.categories.filter(sc => sc.parent === c.name);
+        const hasSubs = subs.length > 0;
+        const isOpen = openSubMenus.includes(c.name); // Utilise la variable globale
+        return `<div class="legend-group">
+            <div class="legend-item">
+                <div class="legend-main-row ${activeCats.includes(c.name)?'active':''}" onclick="toggleCatFilter('${c.name}', true)">
+                    <div class="legend-color" style="background:${c.color}"></div> ${c.name}
+                </div>
+                ${hasSubs ? `<span class="arrow-toggle" onclick="event.stopPropagation(); toggleSubMenu('${c.name}')">${isOpen ? '▲' : '▼'}</span>` : ''} 
+            </div>
+            <div class="sub-cat-container ${isOpen ? 'open' : ''}">
+                ${subs.map(sc => `<div class="legend-item ${activeCats.includes(sc.name)?'active':''}" onclick="toggleCatFilter('${sc.name}', false)" style="opacity:${activeCats.includes(sc.name)?'1':'0.4'}">
+                    <div class="legend-color" style="background:${sc.color}; width:8px; height:8px;"></div> ${sc.name}
+                </div>`).join('')}
+            </div>
+        </div>`;
+    }).join('');
+}
 
             // Marqueurs
             data.structures.forEach((s, idx) => {
@@ -361,7 +361,7 @@ async function importData(event) {
             if(idx > -1) openSubMenus.splice(idx, 1); else openSubMenus.push(name);
             render();
         }
-
+		
         function toggleCatFilter(name, isParent) {
             const index = activeCats.indexOf(name);
             const subCats = data.categories.filter(c => c.parent === name).map(c => c.name);
