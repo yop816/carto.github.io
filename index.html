@@ -694,7 +694,7 @@ function toggleProject(pi, partners, currentIdx) {
                     save(); closeModal('modal-struct');
                 } else alert("Adresse non trouvée");
             } catch(e) { alert("Erreur réseau"); }
-        }
+        } 
 
        function resetStructModal() {
     editingStructIdx = null; 
@@ -810,6 +810,8 @@ function toggleProject(pi, partners, currentIdx) {
         }
 
         render();
+		
+		setInterval(() => { if (!isAdmin) { loadDataFromCloud(); } }, 120000);
     </script>
 </body>
 </html>
