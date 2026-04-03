@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
-    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+	
     <style>
         :root { --primary-color: #000; --accent-color: #ff0080; }
         body, html { margin: 0; padding: 0; height: 100%; font-family: 'Montserrat', sans-serif; overflow: hidden; background: #fff; }
@@ -189,9 +190,28 @@ input, textarea, select {
         const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
 
-        let data = JSON.parse(localStorage.getItem('mouche_vMaillage')) || { 
-            structures: [], categories: [{name: "Culture", color: "#ff0080", parent: null}], password: "Mouche!"
-        }; 
+const SUPABASE_URL = 'TON_URL_SUPABASE';
+const SUPABASE_KEY = 'TA_CLE_ANON_PUBLIQUE';
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let data = { structures: [], categories: [], password: "Mouche!" };
+
+// Fonction pour charger les données au démarrage
+async function loadDataFromCloud() {
+    const { data: records, error } = await _supabase
+        .from('data_storage')
+        .select('content')
+        .limit(1)
+        .single();
+
+    if (records) {
+        data = records.content;
+        render(); // On redessine la carte une fois les données reçues
+    }
+}
+
+// Appeler le chargement au lancement
+loadDataFromCloud();
         
         let markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
         let isAdmin = false; 
@@ -203,8 +223,21 @@ input, textarea, select {
         let editingStructIdx = null;
         let editingProj = null;
 
-        function save() { localStorage.setItem('mouche_vMaillage', JSON.stringify(data)); render(); }
+async function save() {
+    // 1. On met à jour visuellement l'interface
+    render();
 
+    // 2. On envoie les données à Supabase (on met à jour la ligne ID 1)
+    const { error } = await _supabase
+        .from('data_storage')
+        .update({ content: data })
+        .eq('id', 1); // Assure-toi que l'ID de ta ligne est bien 1
+
+    if (error) {
+        console.error("Erreur de sauvegarde:", error);
+        alert("Erreur lors de la synchronisation cloud");
+    }
+}
         function render() {
             markerCluster.clearLayers(); 
             markersMap = {};
