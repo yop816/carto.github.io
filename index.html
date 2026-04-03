@@ -203,63 +203,80 @@ const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         let editingStructIdx = null;
         let editingProj = null;
 
-        async function loadDataFromCloud() {
-            try {
-                const { data: records, error } = await _supabase
-                    ..from('data_storage').select('content').eq('id', 1).single();
+// ... (Initialisation map et Supabase OK)
 
-                if (records && records.content) {
-                    data = records.content;
-                    // On initialise activeCats ici une fois que les données sont là
-                    window.activeCats = data.categories ? data.categories.map(c => c.name) : [];
-                    render(); 
-                }
-            } catch (e) {
-                console.error("Erreur de chargement:", e);
-            }
+async function loadDataFromCloud() {
+    try {
+        // Correction ici : un seul point avant 'from'
+        const { data: records, error } = await _supabase
+            .from('data_storage')
+            .select('content')
+            .eq('id', 1)
+            .single();
+
+        if (error) throw error;
+
+        if (records && records.content) {
+            data = records.content;
+            // On s'assure que activeCats existe pour ne pas faire planter la légende
+            window.activeCats = data.categories ? data.categories.map(c => c.name) : [];
+            render(); 
         }
+    } catch (e) {
+        console.error("Erreur de chargement:", e);
+    }
+}
 
-        async function save() {
-            if (typeof render === "function") render();
-            
-            const { error } = await _supabase
-                .from('data_storage')
-                .update({ content: data })
-                .eq('id', 1);
+async function save() {
+    // On met à jour l'affichage local d'abord
+    if (typeof render === "function") render();
+    
+    const { error } = await _supabase
+        .from('data_storage')
+        .update({ content: data })
+        .eq('id', 1);
 
-            if (error) {
-                console.error("Erreur de sauvegarde:", error);
-                alert("Erreur de synchronisation cloud");
-            }
-        }
-        loadDataFromCloud();
-		
-        async function importData(event) {
+    if (error) {
+        console.error("Erreur de sauvegarde:", error);
+        alert("Erreur de synchronisation cloud");
+    }
+}
+
+// On lance le chargement
+loadDataFromCloud();
+
+async function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = async function(e) {
         try {
+            // Analyse du texte du fichier
             const importedData = JSON.parse(e.target.result);
             
+            // On vérifie si le fichier a la bonne structure
+            if (!importedData.structures || !importedData.categories) {
+                throw new Error("Le fichier ne semble pas être au bon format (manque structures ou catégories).");
+            }
+
             data = importedData;
             
+            // Envoi immédiat au Cloud
             const { error } = await _supabase
                 .from('data_storage')
                 .update({ content: data })
                 .eq('id', 1);
 
             if (error) {
-                console.error("Détails erreur Supabase:", error);
-                alert("Erreur Cloud : " + error.message);
+                throw error;
             } else {
                 alert("Synchronisé avec le Cloud !");
-                // 3. SEULEMENT ICI on rafraîchit l'affichage
                 render(); 
             }
         } catch (err) {
-            alert("Fichier JSON invalide.");
+            console.error("Erreur Import:", err);
+            alert("Erreur : " + err.message);
         }
     };
     reader.readAsText(file);
