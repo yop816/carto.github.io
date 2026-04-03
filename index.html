@@ -344,13 +344,13 @@ function createGlobalProject() {
 
 function renderProjectsList() {
     const sidePanel = document.getElementById('side-panel');
-    const panelBody = document.getElementById('panel-body');
     sidePanel.classList.remove('half-page');
     sidePanel.classList.add('active');
     render();
     
     document.getElementById('panel-title-nav').innerText = "";
 
+    // 1. On regroupe tous les projets de toutes les structures
     let allP = [];
     data.structures.forEach(s => {
         s.projects.forEach(p => {
@@ -358,19 +358,21 @@ function renderProjectsList() {
         });
     });
 
+    // 2. On définit les deux catégories à afficher
     const categories = ["Action culturelle", "Spectacle"];
 
-    let html = categories.map((catLabel, index) => {
+    let html = categories.map(catLabel => {
+        // On filtre les projets qui correspondent au type (catLabel)
         const projectsInCat = allP.filter(p => p.type === catLabel);
+        
+        // On récupère les noms de projets uniques dans cette catégorie
         const uniqueNames = [...new Set(projectsInCat.map(p => p.name))];
 
-        if (uniqueNames.length === 0) return ""; 
-
-        const extraStyle = (index === 0) ? 'style="margin-top: 70px;"' : '';
+        if (uniqueNames.length === 0) return ""; // On n'affiche pas si vide
 
         return `
-        <div class="list-section" ${extraStyle}>
-            <div class="list-header" onclick="toggleAcc('group-${catLabel.replace(/\s/g, '')}')" style="background: #000; color: #fff; margin-bottom:5px;">
+        <div class="list-section">
+            <div class="list-header" onclick="toggleAcc('group-${catLabel.replace(/\s/g, '')}')" style="background: #000; color: #fff;">
                 <span>${catLabel.toUpperCase()}</span>
                 <span>▼</span>
             </div>
@@ -381,7 +383,7 @@ function renderProjectsList() {
                     return `
                     <div style="margin-top: 5px; border: 1px solid #000;">
                         <div class="list-header" onclick="toggleAcc('${subId}')" style="background: #f4f4f4; border:none; font-size: 0.75rem;">
-                            <span style="font-weight:900;">${uName}</span>
+                            <span>${uName}</span>
                             <span class="year-btn" style="font-size:0.5rem; background:#000; border:none;">${variants[0].year}</span>
                         </div>
                         <div class="list-content" id="${subId}">
@@ -394,63 +396,62 @@ function renderProjectsList() {
         </div>`;
     }).join('');
 
-    panelBody.innerHTML = html || "<p style='padding:80px 20px;'>Aucun projet trouvé.</p>";
+    document.getElementById('panel-body').innerHTML = html || "<p style='padding:20px;'>Aucun projet trouvé.</p>";
 }
 
-function renderPartnersList() {
-    const sidePanel = document.getElementById('side-panel');
-    const panelBody = document.getElementById('panel-body');
-    sidePanel.classList.remove('half-page');
-    sidePanel.classList.add('active'); 
-    render();
+        function renderPartnersList() {
+            const sidePanel = document.getElementById('side-panel');
+            sidePanel.classList.remove('half-page'); // <--- Retour à 35%
+            sidePanel.classList.add('active'); render();
     
-    document.getElementById('panel-title-nav').innerText = "";
+            document.getElementById('panel-title-nav').innerText = "";
 
-    const parentCats = data.categories.filter(c => !c.parent);
-    let html = parentCats.map((pCat, pi) => {
-        const directStructs = data.structures.filter(s => s.category === pCat.name);
-        const subCats = data.categories.filter(c => c.parent === pCat.name);
-        const extraStyle = (pi === 0) ? 'style="margin-top: 70px;"' : '';
-
-        return `<div class="list-section" ${extraStyle}>
-            <div class="list-header" onclick="toggleAcc('p-group-${pi}')" style="border-left: 5px solid ${pCat.color}">
-                <span style="color:${pCat.color}; font-weight:900;">${pCat.name.toUpperCase()}</span>
-                <span>▼</span>
-            </div>
-            <div class="list-content" id="p-group-${pi}">
-                ${directStructs.map(s => `<div class="partner-link" style="display:block; margin-bottom:5px;" onclick="openPanel(${data.structures.indexOf(s)})">• ${s.name}</div>`).join('')}
-                ${subCats.map((sCat, si) => {
-                    const sCatStructs = data.structures.filter(s => s.category === sCat.name);
-                    if (sCatStructs.length === 0) return '';
-                    return `<div style="margin: 10px 0 5px 10px; border-left: 2px solid #eee; padding-left: 10px;">
-                        <div onclick="toggleAcc('sub-group-${pi}-${si}')" style="cursor:pointer; font-weight:700; font-size:0.75rem; color:#666;">${sCat.name} +</div>
-                        <div class="list-content" id="sub-group-${pi}-${si}">
-                            ${sCatStructs.map(s => `<div class="partner-link" style="display:block" onclick="openPanel(${data.structures.indexOf(s)})">${s.name}</div>`).join('')}
-                        </div>
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-    }).join('');
-    panelBody.innerHTML = html;
-}
+            const parentCats = data.categories.filter(c => !c.parent);
+            let html = parentCats.map((pCat, pi) => {
+                const directStructs = data.structures.filter(s => s.category === pCat.name);
+                const subCats = data.categories.filter(c => c.parent === pCat.name);
+                return `<div class="list-section">
+                    <div class="list-header" onclick="toggleAcc('p-group-${pi}')" style="border-left: 5px solid ${pCat.color}">
+                        <span style="color:${pCat.color}; font-weight:900;">${pCat.name.toUpperCase()}</span>
+                        <span>▼</span>
+                    </div>
+                    <div class="list-content" id="p-group-${pi}">
+                        ${directStructs.map(s => `<div class="partner-link" style="display:block; margin-bottom:5px;" onclick="openPanel(${data.structures.indexOf(s)})">• ${s.name}</div>`).join('')}
+                        ${subCats.map((sCat, si) => {
+                            const sCatStructs = data.structures.filter(s => s.category === sCat.name);
+                            if (sCatStructs.length === 0) return '';
+                            return `<div style="margin: 10px 0 5px 10px; border-left: 2px solid #eee; padding-left: 10px;">
+                                <div onclick="toggleAcc('sub-group-${pi}-${si}')" style="cursor:pointer; font-weight:700; font-size:0.75rem; color:#666;">${sCat.name} +</div>
+                                <div class="list-content" id="sub-group-${pi}-${si}">
+                                    ${sCatStructs.map(s => `<div class="partner-link" style="display:block" onclick="openPanel(${data.structures.indexOf(s)})">${s.name}</div>`).join('')}
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById('panel-body').innerHTML = html;
+        }
 
 function openPanel(idx) {
     const s = data.structures[idx];
     if (!s) return;
-    const sidePanel = document.getElementById('side-panel');
-    const panelBody = document.getElementById('panel-body');
-    
+	const sidePanel = document.getElementById('side-panel');
     sidePanel.classList.add('active');
-    document.getElementById('panel-title-nav').innerText = "";
+    const catObj = data.categories.find(c => c.name === s.category);
+
+    document.getElementById('side-panel').classList.add('active');
+
+    const navTitle = document.getElementById('panel-title-nav');
+    if (navTitle) navTitle.innerHTML = "";
 
     hideAllMarkersExcept([idx]);
     highlight(idx, true);
 
-    const catObj = data.categories.find(c => c.name === s.category);
     let categoryHTML = catObj ? `<div style="color:${s.color}; font-weight:900; font-size:0.8rem;">${catObj.parent ? catObj.parent.toUpperCase() + ' - ' : ''}${s.category.toUpperCase()}</div>` : "";
 
-    let html = `<h2 style="margin-top:10px; margin-bottom:5px; padding-right:40px;">${s.name.toUpperCase()}</h2>
+    // Titre descendu (margin-top: 25px)
+    let html = `<h2 style="margin-top:25px; margin-bottom:5px;">${s.name.toUpperCase()}</h2>
                 ${categoryHTML}
                 <p style="margin-top:5px;"><small>${s.address}</small></p>`;
 
@@ -504,7 +505,7 @@ function openPanel(idx) {
             <select id="ptype">
                 <option value="">-- Type de projet --</option>
                 <option value="Action culturelle">Action culturelle</option>
-                <option value="Spectacle">Spectacle</option>
+                <option value="Parcours de spectacle">Spectacle</option>
             </select>
             <input id="pt" placeholder="Partenaires (séparés par virgule)">
             <textarea id="pd" placeholder="Description détaillée" oninput="autoExpand(this)"></textarea>
@@ -515,7 +516,7 @@ function openPanel(idx) {
         </div>`;
     }
 
-    panelBody.innerHTML = html;
+    document.getElementById('panel-body').innerHTML = html;
     if(markersMap[idx]) map.panTo(markersMap[idx].getLatLng());
 }
 
