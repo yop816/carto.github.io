@@ -187,25 +187,25 @@ input, textarea, select {
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // --- 1. VARIABLES GLOBALES (Déclarées au début du script) ---
-        var data = { structures: [], categories: [], password: "Mouche!" };
-        var isAdmin = false; 
-        var currentYear = "TOUT"; 
-        var currentType = "TOUT";
-        var markersMap = {}; 
-        var openSubMenus = []; // Corrigé : déclaré ici
-        var activeCats = [];   // Corrigé : déclaré ici
-        var editingStructIdx = null;
-        var editingProj = null;
 
         const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
 
-        const SUPABASE_URL = 'url'; // Remets ton URL
-        const SUPABASE_KEY = 'clef'; // Remets ta clé
+        const SUPABASE_URL = 'https://evgruofgrxipcvypbuxd.supabase.co'; 
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2Z3J1b2ZncnhpcGN2eXBidXhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNzE5MTQsImV4cCI6MjA5MDc0NzkxNH0.k8C0V2KN0eZtsGK4mwx2w3btZ9m6OTzM4ielxGfQCoE'; 
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
+		let data = { structures: [], categories: [], password: "Mouche!" };
+let isAdmin = false; 
+let currentYear = "TOUT"; 
+let currentType = "TOUT";
+let markersMap = {}; 
+let openSubMenus = [];
+let activeCats = []; 
+let editingStructIdx = null;
+let editingProj = null;
+
+const markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
 
 async function loadDataFromCloud() {
     try {
