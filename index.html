@@ -785,9 +785,7 @@ function toggleProject(pi, partners, currentIdx) {
 	async function uploadToSupabase(file, folder) {
     if (!file) return null;
     const fileName = `${folder}/${Date.now()}-${file.name}`;
-    const { data, error } = await supabase.storage
-        .from('project-files')
-        .upload(fileName, file);
+	const { data, error } = await _supabase.storage.from('project-files').upload(fileName, file);
 
     if (error) {
         console.error("Erreur d'upload :", error.message);
