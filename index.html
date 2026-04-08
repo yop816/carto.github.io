@@ -633,7 +633,7 @@ function openPanel(idx) {
         </div>`;
     });
 
-    if (isAdmin) {
+      if (isAdmin) {
         html += `<div id="proj-form" style="background:#f9f9f9; padding:15px; border:2px solid #000; margin-top:20px;">
             <h4 id="proj-form-title" style="margin-top:0;">NOUVEAU PROJET</h4>
             <input id="py" value="2024-2025" placeholder="Année">
@@ -645,9 +645,19 @@ function openPanel(idx) {
             </select>
             <input id="pt" placeholder="Partenaires (séparés par virgule)">
             <textarea id="pd" placeholder="Description détaillée" oninput="autoExpand(this)"></textarea>
-            <input id="pimg" placeholder="URL Image">
-            <input id="pw" placeholder="Texte du bouton/lien">
-            <input id="pl" placeholder="URL du lien">
+            
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.7rem; font-weight:bold; display:block;">IMAGE (IMPORT) :</label>
+                <input type="file" id="pimg_file" accept="image/*" style="font-size:0.7rem; width:100%;">
+                <input type="hidden" id="pimg"> </div>
+
+            <input id="pw" placeholder="Texte du bouton (ex: En savoir plus)">
+
+            <div style="margin-bottom:10px;">
+                <label style="font-size:0.7rem; font-weight:bold; display:block;">DOCUMENT PDF (IMPORT) :</label>
+                <input type="file" id="pl_file" accept="application/pdf" style="font-size:0.7rem; width:100%;">
+                <input type="hidden" id="pl"> </div>
+
             <button class="btn-full" id="btn-proj-submit" onclick="addProj(${idx})">VALIDER PROJET</button>
         </div>`;
     }
