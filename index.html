@@ -96,15 +96,10 @@ input, textarea, select {
     <button id="btn-save" class="btn-round" style="display:none;" onclick="exportData()">💾</button>
     <button id="btn-load" class="btn-round" style="display:none;" onclick="document.getElementById('file-input').click()">📂</button>
     <input type="file" id="file-input" style="display:none" onchange="importData(event)">
-    
-    <button id="btn-quick-proj" class="btn-round" style="display:none; background:#e1f5fe;" onclick="document.getElementById('global-project-form').style.display='block'">✨</button>
-    
+        
     <button id="btn-add-struct" class="btn-round" style="display:none;" onclick="openModal('modal-struct')">+</button>
 </div>
   
-    <button class="btn-full" onclick="document.getElementById('global-project-form').style.display='none'" style="background:#ccc;">ANNULER</button>
-</div>
-
     <div id="main-container">
         <div id="side-panel">
             <div style="position: sticky; top: 0; background: #fff; padding: 20px 25px 10px 25px; z-index: 10; border-bottom: 1px solid #eee;">
