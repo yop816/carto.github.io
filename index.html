@@ -174,11 +174,13 @@ input, textarea, select {
         const map = L.map('map', { zoomControl: false }).setView([45.695, 4.793], 13);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map); 
 
-        const SUPABASE_URL = 'https://evgruofgrxipcvypbuxd.supabase.co'; 
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2Z3J1b2ZncnhpcGN2eXBidXhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNzE5MTQsImV4cCI6MjA5MDc0NzkxNH0.k8C0V2KN0eZtsGK4mwx2w3btZ9m6OTzM4ielxGfQCoE'; 
-        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// --- CONFIGURATION JSONBIN (Remplace avec tes codes) ---
+const BIN_ID = '69e6364536566621a8d23271';
+const MASTER_KEY = '$2a$10$2dpOvAVVNrN6mWuKhQsBF.FLP68D9wvQLggxoOI1BVslHq.W6ow5u';
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${69e6364536566621a8d23271}`;
 
-		let data = { structures: [], categories: [], password: "Mouche!" };
+// --- VARIABLES GLOBALES ---
+let data = { structures: [], categories: [], password: "Mouche!" };
 let isAdmin = false; 
 let currentYear = "TOUT"; 
 let currentType = "TOUT";
@@ -188,19 +190,28 @@ let activeCats = [];
 let editingStructIdx = null;
 let editingProj = null;
 let editingStructure = null;
-		
+        
 const markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 40 });
 
+// --- CHARGEMENT DES DONNÉES (JSONBin) ---
 async function loadDataFromCloud() {
     try {
-        const { data: records, error } = await _supabase
-            .from('data_storage')
-            .select('content')
-            .eq('id', 1)
-            .single();
-        if (error) throw error;
-        if (records && records.content) {
-            data = records.content;
+        const res = await fetch(`${JSONBIN_URL}/latest`, {
+            method: 'GET',
+            headers: {
+                'X-Master-Key': MASTER_KEY
+            }
+        });
+
+        if (!res.ok) throw new Error("Erreur réseau JSONBin");
+
+        const result = await res.json();
+        
+        // JSONBin place tes données dans l'objet 'record'
+        if (result.record) {
+            data = result.record;
+            
+            // Nettoyage des projets null (sécurité)
             if (data.structures) {
                 data.structures.forEach(s => {
                     if (s.projects) {
@@ -208,30 +219,45 @@ async function loadDataFromCloud() {
                     }
                 });
             }
+
             activeCats = data.categories ? data.categories.map(c => c.name) : [];
-            if (typeof openSubMenus === 'undefined') openSubMenus = []; 
-            render(); 
+            openSubMenus = []; 
+            
+            if (typeof render === "function") render(); 
+            console.log("Données chargées depuis JSONBin");
         }
     } catch (e) {
         console.error("Erreur de chargement:", e);
+        // Si ça échoue, on affiche quand même une base vide pour éviter le crash
+        if (typeof render === "function") render();
     }
 }
 
+// --- SAUVEGARDE DES DONNÉES (JSONBin) ---
 async function save() {
+    // On rafraîchit l'affichage local immédiatement pour la réactivité
     if (typeof render === "function") render();
     
-    const { error } = await _supabase
-        .from('data_storage')
-        .update({ content: data })
-        .eq('id', 1);
+    try {
+        const res = await fetch(JSONBIN_URL, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': MASTER_KEY
+            },
+            body: JSON.stringify(data)
+        });
 
-    if (error) {
-        console.error("Erreur de sauvegarde:", error);
-        alert("Erreur de synchronisation cloud");
+        if (!res.ok) throw new Error("Erreur lors de la sauvegarde JSONBin");
+
+        console.log("Sauvegarde réussie sur JSONBin !");
+    } catch (e) {
+        console.error("Erreur de sauvegarde:", e);
+        alert("Erreur de synchronisation cloud (JSONBin)");
     }
 }
 
-// On lance le chargement immédiatement
+// Lancement automatique au chargement de la page
 loadDataFromCloud();
 
 async function importData(event) {
