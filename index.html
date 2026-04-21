@@ -944,13 +944,21 @@ async function addProj(idx) {
                     const existingIdx = data.structures[sIdx].projects.findIndex(exP => exP.name === oldName || exP.name === pn);
                     
                     let linkedProj;
-                    if (pObj.type === "Action culturelle") {
-                        const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
-                        linkedProj = { ...pObj, part: "", desc: existingP.desc || "(Texte à personnaliser)" };
-                    } else {
-                        linkedProj = { ...pObj };
-                    }
-
+                   	if (pObj.type === "Action culturelle") {
+					    const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
+    linkedProj = {
+		year: pObj.year,
+        name: pObj.name,
+        type: pObj.type,
+        part: "", 
+        desc: existingP.desc || "(Texte à personnaliser pour cette structure)",
+        img: existingP.img || "", 
+        pdf: existingP.pdf || "",
+        word: existingP.word || pObj.word
+    };
+} else {
+    linkedProj = { ...pObj };
+}
                     let newParts = partners.filter(name => name.toLowerCase() !== pName.toLowerCase());
                     newParts.push(currentStructName);
                     linkedProj.part = newParts.join(', ');
