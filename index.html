@@ -94,9 +94,12 @@ input, textarea, select {
 </head>
 <body>
 
-<div id="loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: sans-serif;">
-    <div class="spinner"></div>
-    <p style="margin-top: 15px; color: #333;">Chargement de la carte...</p>
+<div id="loader" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: sans-serif;">
+    <img src="https://res.cloudinary.com/dfnwisv3h/image/upload/v1/votre_logo.png" style="width: 80px; margin-bottom: 20px;">
+    <div style="width: 250px; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; border: 1px solid #ddd;">
+        <div id="progress-bar" style="width: 0%; height: 100%; background: #ff0000; transition: width 0.3s ease;"></div>
+    </div>
+    <p id="loader-text" style="margin-top: 15px; color: #666; font-size: 14px;">Initialisation...</p>
 </div>
 	
     <div id="btn-global-list">
@@ -217,25 +220,37 @@ const markerCluster = L.markerClusterGroup({ showCoverageOnHover: false, maxClus
 
 // --- CHARGEMENT DES DONNÉES (JSONBin) ---
 async function loadDataFromCloud() {
-    // 1. Afficher le spinner au début
+    const bar = document.getElementById('progress-bar');
+    const text = document.getElementById('loader-text');
     const loader = document.getElementById('loader');
-    if (loader) loader.style.display = 'flex';
+
+    const updateProgress = (percent, msg) => {
+        if (bar) bar.style.width = percent + '%';
+        if (text) text.innerText = msg;
+    };
 
     try {
+        if (loader) loader.style.display = 'flex';
+        
+        // Étape 1 : Connexion au serveur
+        updateProgress(20, "Connexion à JSONBin...");
+        
         const res = await fetch(`${JSONBIN_URL}/latest`, {
             method: 'GET',
-            headers: {
-                'X-Master-Key': MASTER_KEY
-            }
+            headers: { 'X-Master-Key': MASTER_KEY }
         });
 
-        if (!res.ok) throw new Error("Erreur réseau JSONBin");
+        if (!res.ok) throw new Error("Erreur réseau");
 
+        // Étape 2 : Téléchargement des données
+        updateProgress(50, "Téléchargement des données...");
         const result = await res.json();
         
         if (result.record) {
             data = result.record;
             
+            // Étape 3 : Traitement et nettoyage
+            updateProgress(80, "Optimisation de l'affichage...");
             if (data.structures) {
                 data.structures.forEach(s => {
                     if (s.projects) {
@@ -245,17 +260,22 @@ async function loadDataFromCloud() {
             }
 
             activeCats = data.categories ? data.categories.map(c => c.name) : [];
-            openSubMenus = []; 
             
-            if (typeof render === "function") render(); 
-            console.log("Données chargées depuis JSONBin");
+            // Étape 4 : Rendu final
+            updateProgress(100, "Carte prête !");
+            
+            if (typeof render === "function") render();
+            
+            // Petit délai pour que l'utilisateur voie le "100%"
+            setTimeout(() => {
+                if (loader) loader.style.fadeOut = "slow"; // Si tu as jQuery
+                if (loader) loader.style.display = 'none';
+            }, 500);
         }
     } catch (e) {
-        console.error("Erreur de chargement:", e);
-        if (typeof render === "function") render();
-    } finally {
-        // 2. Masquer le spinner à la fin (quoi qu'il arrive)
-        if (loader) loader.style.display = 'none';
+        console.error(e);
+        updateProgress(100, "Erreur de chargement...");
+        setTimeout(() => { if (loader) loader.style.display = 'none'; }, 1500);
     }
 }
 
