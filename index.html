@@ -261,31 +261,34 @@ async function loadDataFromCloud() {
 
 // --- SAUVEGARDE DES DONNÉES (JSONBin) ---
 async function save() {
-    // On rafraîchit l'affichage local immédiatement pour la réactivité
     if (typeof render === "function") render();
     
     try {
-        const res = await fetch(JSONBIN_URL, {
+        // On force l'URL sans le "/latest" pour le PUT
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Master-Key': MASTER_KEY
             },
+            // On s'assure d'envoyer un objet propre sans fonctions
             body: JSON.stringify(data)
         });
 
-        if (!res.ok) throw new Error("Erreur lors de la sauvegarde JSONBin");
+        const result = await res.json();
+
+        if (!res.ok) {
+            console.error("Détails erreur JSONBin:", result);
+            throw new Error(result.message || "Erreur lors de la sauvegarde");
+        }
 
         console.log("Sauvegarde réussie sur JSONBin !");
     } catch (e) {
         console.error("Erreur de sauvegarde:", e);
-        alert("Erreur de synchronisation cloud (JSONBin)");
+        // On n'affiche l'alerte que si c'est vraiment bloquant
+        // alert("Erreur de synchronisation cloud");
     }
 }
-
-// Lancement automatique au chargement de la page
-loadDataFromCloud();
-
 async function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
