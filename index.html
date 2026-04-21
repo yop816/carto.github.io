@@ -258,6 +258,32 @@ async function loadDataFromCloud() {
         if (loader) loader.style.display = 'none';
     }
 }
+
+// --- FONCTION DE SAUVEGARDE VERS JSONBIN ---
+async function save() {
+    if (typeof render === "function") render();
+    
+    try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Master-Key': MASTER_KEY
+            },
+            body: JSON.stringify(data) // Envoi des données vers le cloud
+        });
+
+        if (!res.ok) {
+            const result = await res.json();
+            throw new Error(result.message || "Erreur lors de la sauvegarde JSONBin");
+        }
+
+        console.log("Sauvegarde réussie sur JSONBin !");
+    } catch (e) {
+        console.error("Erreur de sauvegarde:", e);
+    }
+}
+		
 async function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
