@@ -895,10 +895,13 @@ async function addProj(idx) {
     
     if(!py || !pn) return alert("Année et Titre requis");
 
+    // --- SÉCURITÉ INDEX ---
+    // Si on modifie, on utilise l'index sauvegardé, sinon celui passé en paramètre
+    const targetIdx = (editingStructure !== null) ? editingStructure : idx;
+
     const imgFile = document.getElementById('pimg_file').files[0];
     const pdfFile = document.getElementById('pl_file').files[0];
 
-    // On montre un petit message ou on change le texte du bouton pour faire patienter
     const btn = document.querySelector('#proj-form button[onclick^="addProj"]');
     const originalBtnText = btn ? btn.innerText : "";
     if(btn) btn.innerText = "Chargement des fichiers...";
@@ -907,11 +910,9 @@ async function addProj(idx) {
     let pdfUrl = document.getElementById('pl').value;
 
     try {
-        // --- ÉTAPE 1 : Upload des fichiers (Indispensable avant de continuer) ---
         if (imgFile) imageUrl = await uploadToCloudinary(imgFile);
         if (pdfFile) pdfUrl = await uploadToCloudinary(pdfFile);
 
-        // --- ÉTAPE 2 : Création de l'objet projet ---
         const pObj = { 
             year: py, 
             name: pn, 
@@ -925,40 +926,43 @@ async function addProj(idx) {
 
         let oldName = pn;
         if(editingProj !== null) {
-            oldName = data.structures[idx].projects[editingProj].name;
-            data.structures[idx].projects[editingProj] = pObj; 
+            // On utilise targetIdx ici pour être sûr
+            oldName = data.structures[targetIdx].projects[editingProj].name;
+            data.structures[targetIdx].projects[editingProj] = pObj; 
             editingProj = null; 
+            editingStructure = null; // Très important de reset ici
         } else {
-            if(!data.structures[idx].projects) data.structures[idx].projects = [];
-            data.structures[idx].projects.push(pObj);
+            if(!data.structures[targetIdx].projects) data.structures[targetIdx].projects = [];
+            data.structures[targetIdx].projects.push(pObj);
         }
 
-        // --- ÉTAPE 3 : Logique de réciprocité ---
-        const currentStructName = data.structures[idx].name; 
+        // --- RÉCIPROCITÉ ---
+        const currentStructName = data.structures[targetIdx].name; 
         if (pObj.part) {
             const partners = pObj.part.split(',').map(p => p.trim());
             partners.forEach(pName => {
                 const sIdx = data.structures.findIndex(s => s.name.toLowerCase() === pName.toLowerCase());
-                if (sIdx !== -1 && sIdx !== idx) {
+                if (sIdx !== -1 && sIdx !== targetIdx) {
                     if (!data.structures[sIdx].projects) data.structures[sIdx].projects = [];
                     const existingIdx = data.structures[sIdx].projects.findIndex(exP => exP.name === oldName || exP.name === pn);
                     
                     let linkedProj;
-                   	if (pObj.type === "Action culturelle") {
-					    const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
-    linkedProj = {
-		year: pObj.year,
-        name: pObj.name,
-        type: pObj.type,
-        part: "", 
-        desc: existingP.desc || "(Texte à personnaliser pour cette structure)",
-        img: existingP.img || "", 
-        pdf: existingP.pdf || "",
-        word: existingP.word || pObj.word
-    };
-} else {
-    linkedProj = { ...pObj };
-}
+                    if (pObj.type === "Action culturelle") {
+                        const existingP = existingIdx !== -1 ? data.structures[sIdx].projects[existingIdx] : {};
+                        linkedProj = {
+                            year: pObj.year,
+                            name: pObj.name,
+                            type: pObj.type,
+                            part: "", 
+                            desc: existingP.desc || "(Texte à personnaliser pour cette structure)",
+                            img: existingP.img || "", 
+                            pdf: existingP.pdf || "",
+                            word: existingP.word || pObj.word
+                        };
+                    } else {
+                        linkedProj = { ...pObj };
+                    }
+
                     let newParts = partners.filter(name => name.toLowerCase() !== pName.toLowerCase());
                     newParts.push(currentStructName);
                     linkedProj.part = newParts.join(', ');
@@ -969,16 +973,16 @@ async function addProj(idx) {
             });
         }
 
+        // --- FINALISATION ---
         document.getElementById('proj-form').style.display = 'none';
-        resetProjForm(); // Petite fonction de nettoyage (voir ci-dessous)
-        openPanel(idx); 
+        resetProjForm();
+        openPanel(targetIdx); 
         if(typeof render === "function") render(); 
-		
+        
         save().then(() => {
             console.log("Synchronisation Cloud réussie");
         }).catch(err => {
             console.error("Erreur de synchro Cloud:", err);
-            alert("Attention : Les données sont affichées mais la sauvegarde Cloud a échoué.");
         });
 
     } catch (error) {
