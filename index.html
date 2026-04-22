@@ -110,7 +110,7 @@ input, textarea, select {
     </div>
 
 <div id="admin-controls">
-	<button class="btn-round" onclick="openModal('modal-settings')">⚙</button>
+	<button class="btn-round" onclick="handleSettingsClick()">⚙</button>
     <button id="btn-save" class="btn-round" style="display:none;" onclick="exportData()">💾</button>
     <button id="btn-load" class="btn-round" style="display:none;" onclick="document.getElementById('file-input').click()">📂</button>
     <input type="file" id="file-input" style="display:none" onchange="importData(event)">
@@ -1048,6 +1048,9 @@ function editProj(sIdx, pIdx) {
         }
         function delCat(i) { if(confirm("Supprimer ?")) { data.categories.splice(i, 1); save(); } }
 
+		function handleSettingsClick() {
+    	if (isAdmin) {openModal('modal-settings');} else {openModal('modal-login');}}
+		
         function login() {
             if(document.getElementById('admin-pass').value === data.password) {
                 isAdmin = true; closeModal('modal-login'); render();
