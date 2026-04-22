@@ -110,7 +110,7 @@ input, textarea, select {
     </div>
 
 <div id="admin-controls">
-    <button class="btn-round" onclick="toggleAdminMenu()">⚙</button>
+	<button class="btn-round" onclick="openModal('modal-settings')">⚙</button>
     <button id="btn-save" class="btn-round" style="display:none;" onclick="exportData()">💾</button>
     <button id="btn-load" class="btn-round" style="display:none;" onclick="document.getElementById('file-input').click()">📂</button>
     <input type="file" id="file-input" style="display:none" onchange="importData(event)">
@@ -1054,7 +1054,14 @@ function editProj(sIdx, pIdx) {
             } else alert("Mauvais mot de passe");
         }
         function logout() { isAdmin = false; location.reload(); }
-        function changePass() { data.password = document.getElementById('new-pass').value; save(); closeModal('modal-settings'); }
+		function changePass() {const val = document.getElementById('new-pass').value.trim();
+   			 if (!val) return alert("Le mot de passe ne peut pas être vide !");
+    
+    data.password = val; 
+    save(); 
+    closeModal('modal-settings'); 
+    alert("Mot de passe modifié !");
+}
 
 function toggleAdminMenu() {
     if (!isAdmin) {
